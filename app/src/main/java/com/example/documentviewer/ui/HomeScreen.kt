@@ -90,6 +90,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.BuildConfig
 import com.example.R
 import com.example.documentviewer.data.AppLanguage
 import com.example.documentviewer.data.SystemFolderItem
@@ -97,6 +98,7 @@ import com.example.documentviewer.data.ThemeMode
 import com.example.documentviewer.model.DocumentCategory
 import com.example.documentviewer.model.DocumentDescriptor
 import com.example.documentviewer.model.SupportLevel
+import com.example.documentviewer.update.ReleaseInfo
 import com.example.ui.theme.AccessAccent
 import com.example.ui.theme.CodeAccent
 import com.example.ui.theme.ExcelAccent
@@ -136,7 +138,13 @@ fun HomeScreen(
   onRequestStoragePermission: () -> Unit = {},
   onCreateNewFolder: (String, SystemFolderItem?) -> Unit = { _, _ -> },
   onAddFileToFolder: (SystemFolderItem) -> Unit = {},
-  onRescanDevice: () -> Unit = {}
+  onRescanDevice: () -> Unit = {},
+  onCheckForUpdates: () -> Unit = {},
+  onCancelUpdate: () -> Unit = {},
+  onRetryUpdateDownload: (ReleaseInfo) -> Unit = {},
+  onInstallUpdate: () -> Unit = {},
+  onDismissUpdate: () -> Unit = {},
+  onAutoCheckUpdatesChange: (Boolean) -> Unit = {}
 ) {
   val snackbarHostState = remember { SnackbarHostState() }
 
@@ -176,7 +184,7 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.primaryContainer
               ) {
                 Text(
-                  text = "v1.3.0",
+                  text = "v${BuildConfig.VERSION_NAME}",
                   style = MaterialTheme.typography.labelSmall,
                   color = MaterialTheme.colorScheme.onPrimaryContainer,
                   fontWeight = FontWeight.Bold,
@@ -321,6 +329,16 @@ fun HomeScreen(
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
           }
 
+          if (uiState.selectedTab != HomeTab.ENGINES) {
+            AppUpdateBanner(
+              updateState = uiState.updateState,
+              onCancelUpdate = onCancelUpdate,
+              onRetryDownload = onRetryUpdateDownload,
+              onInstallUpdate = onInstallUpdate,
+              onDismissUpdate = onDismissUpdate
+            )
+          }
+
           when (uiState.selectedTab) {
             HomeTab.ENGINES -> {
               SettingsTabContent(
@@ -330,6 +348,13 @@ fun HomeScreen(
                 onContinuousPdfChange = onContinuousPdfChange,
                 onKeepScreenOnChange = onKeepScreenOnChange,
                 onClearHistory = onClearHistory,
+                updateState = uiState.updateState,
+                onCheckForUpdates = onCheckForUpdates,
+                onCancelUpdate = onCancelUpdate,
+                onRetryUpdateDownload = onRetryUpdateDownload,
+                onInstallUpdate = onInstallUpdate,
+                onDismissUpdate = onDismissUpdate,
+                onAutoCheckUpdatesChange = onAutoCheckUpdatesChange,
                 modifier = Modifier.fillMaxSize()
               )
             }

@@ -152,4 +152,34 @@
     <string name="file_unavailable_reselect">File is unavailable, please select it again</string>
     <string name="error_permission_denied">Permission denied while trying to access this file</string>
     <string name="error_no_external_app">No compatible app found to perform this action</string>
+
+    <string name="update_card_title">App Updates</string>
+    <string name="update_card_subtitle">Official DocuView Update Service</string>
+    <string name="update_current_version_label">Installed: v%1$s</string>
+    <string name="update_auto_check">Auto-check and download updates</string>
+    <string name="update_check_now">Check for Updates</string>
+    <string name="update_checking">Checking for updates…</string>
+    <string name="update_up_to_date">Your app is up to date (v%1$s)</string>
+    <string name="update_available_banner_title">Update v%1$s Available</string>
+    <string name="update_downloading_banner_subtitle">Downloading update automatically…</string>
+    <string name="update_cancel_button">Cancel Update</string>
+    <string name="update_retry_download">Download Update</string>
+    <string name="update_install_button">Install Now</string>
+    <string name="update_allow_install_button">Allow &amp; Install</string>
+    <string name="update_cancelled_msg">Update download cancelled (v%1$s)</string>
+    <string name="update_ready_title">Update v%1$s Ready to Install</string>
+    <string name="update_ready_desc">Tap Install Now to upgrade DocuView to the latest version.</string>
+    <string name="update_needs_permission_desc">Allow app install permission to complete upgrading DocuView.</string>
+    <string name="update_size_single_mb">%1$s MB</string>
+    <string name="update_progress_mb_of_total">%1$s MB / %2$s MB</string>
+    <string name="update_notif_available_title">DocuView v%1$s Available</string>
+    <string name="update_notif_downloading">Downloading v%1$s automatically…</string>
+    <string name="update_notif_downloading_size">Downloading v%1$s (%2$s)…</string>
+    <string name="update_channel_name">App Updates</string>
+    <string name="update_channel_desc">Notifications for available app updates and download progress</string>
+    <string name="update_error_network">Unable to check for updates. Check your internet connection.</string>
+    <string name="update_error_server">Update service unavailable (code %1$d)</string>
+    <string name="update_error_download">Update download failed. Please retry.</string>
+    <string name="update_no_apk_found">No newer release package is currently published.</string>
+    <string name="update_dismiss">Dismiss</string>
 </resources>

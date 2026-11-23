@@ -152,4 +152,34 @@
     <string name="file_unavailable_reselect">الملف غير متاح، أعد اختياره</string>
     <string name="error_permission_denied">تم رفض صلاحية الوصول إلى هذا الملف</string>
     <string name="error_no_external_app">لا يوجد تطبيق متاح لتنفيذ هذا الإجراء</string>
+
+    <string name="update_card_title">تحديثات التطبيق</string>
+    <string name="update_card_subtitle">مركز التحديثات الرسمي لتطبيق DocuView</string>
+    <string name="update_current_version_label">الإصدار المثبت: v%1$s</string>
+    <string name="update_auto_check">فحص وتنزيل التحديثات الجديدة تلقائياً</string>
+    <string name="update_check_now">التحقق من التحديثات</string>
+    <string name="update_checking">جارٍ البحث عن تحديثات جديدة…</string>
+    <string name="update_up_to_date">التطبيق محدّث إلى آخر إصدار (v%1$s)</string>
+    <string name="update_available_banner_title">يتوفر تحديث جديد (v%1$s)</string>
+    <string name="update_downloading_banner_subtitle">جارٍ تنزيل التحديث تلقائياً…</string>
+    <string name="update_cancel_button">إلغاء التنزيل</string>
+    <string name="update_retry_download">تنزيل التحديث</string>
+    <string name="update_install_button">تثبيت الآن</string>
+    <string name="update_allow_install_button">السماح بالتثبيت والتحديث</string>
+    <string name="update_cancelled_msg">تم إلغاء تنزيل التحديث (v%1$s)</string>
+    <string name="update_ready_title">التحديث v%1$s جاهز للتثبيت</string>
+    <string name="update_ready_desc">اضغط على تثبيت الآن لترقية التطبيق إلى أحدث إصدار.</string>
+    <string name="update_needs_permission_desc">يرجى السماح لتطبيق DocuView بتثبيت التحديثات لإكمال الترقية.</string>
+    <string name="update_size_single_mb">%1$s ميغابايت</string>
+    <string name="update_progress_mb_of_total">%1$s / %2$s ميغابايت</string>
+    <string name="update_notif_available_title">يتوفر تحديث جديد للتطبيق v%1$s</string>
+    <string name="update_notif_downloading">جارٍ تنزيل الإصدار v%1$s تلقائياً…</string>
+    <string name="update_notif_downloading_size">جارٍ تنزيل v%1$s (%2$s)…</string>
+    <string name="update_channel_name">تحديثات التطبيق</string>
+    <string name="update_channel_desc">إشعارات توفر التحديثات الجديدة وتقدم التنزيل بالميغابايت</string>
+    <string name="update_error_network">تعذّر الاتصال بخدمة التحديثات. تحقق من اتصال الإنترنت.</string>
+    <string name="update_error_server">خدمة التحديثات غير متاحة حالياً (رمز %1$d)</string>
+    <string name="update_error_download">توقف تنزيل التحديث. يمكنك المحاولة مرة أخرى.</string>
+    <string name="update_no_apk_found">لا توجد حزمة تحديث جديدة منشورة حالياً.</string>
+    <string name="update_dismiss">إغلاق</string>
 </resources>

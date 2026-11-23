@@ -675,6 +675,104 @@ class DocumentViewerRobolectricTest {
     assertTrue(!accessCss.contains("overflow-wrap: anywhere;"))
   }
 
+  @Test
+  fun `AppUpdateManager compares SemVer versions, parses release APK JSON, formats MB, and strips repo brand names`() {
+    val mgr = com.example.documentviewer.update.AppUpdateManager
+    assertTrue(mgr.compareVersions("v1.4.0", "1.3.0") > 0)
+    assertTrue(mgr.compareVersions("2.0.0", "1.9.9") > 0)
+    assertEquals(0, mgr.compareVersions("v1.3.0", "1.3.0"))
+    assertTrue(mgr.compareVersions("1.2.9", "1.3.0") < 0)
+
+    val sampleJson = """
+      {
+        "tag_name": "v1.4.0",
+        "name": "DocuView v1.4.0 Release",
+        "draft": false,
+        "body": "Download from GitHub https://github.com/moshraheem-sudo/DocuView/releases improvements",
+        "assets": [
+          {
+            "name": "notes.txt",
+            "size": 1200,
+            "browser_download_url": "https://example.com/notes.txt"
+          },
+          {
+            "name": "DocuView.apk",
+            "size": 20971520,
+            "browser_download_url": "https://example.com/DocuView.apk"
+          }
+        ]
+      }
+    """.trimIndent()
+
+    val parsed = mgr.parseReleaseFromJson(sampleJson)
+    assertNotNull(parsed)
+    assertEquals("1.4.0", parsed!!.versionName)
+    assertEquals("DocuView.apk", parsed.assetName)
+    assertEquals(20971520L, parsed.sizeBytes)
+    assertTrue(!parsed.notes.contains("github", ignoreCase = true))
+    assertTrue(!parsed.title.contains("github", ignoreCase = true))
+
+    val progressStr = mgr.formatProgressMegabytes(context, 10L * 1024L * 1024L, 20L * 1024L * 1024L)
+    assertTrue(progressStr.contains("10.0"))
+    assertTrue(progressStr.contains("20.0"))
+  }
+
+  @Test
+  fun `Settings and HomeScreen render MB download progress, cancel update button, and zero GitHub strings`() {
+    val release = com.example.documentviewer.update.ReleaseInfo(
+      versionName = "1.4.0",
+      title = "DocuView v1.4.0",
+      notes = "Performance upgrades",
+      downloadUrl = "https://example.com/DocuView.apk",
+      sizeBytes = 20L * 1024L * 1024L,
+      assetName = "DocuView.apk"
+    )
+    var cancelClicked = false
+    var checkClicked = false
+    composeTestRule.setContent {
+      LocalizedAppContainer(appLanguage = AppLanguage.ARABIC) { isArabic ->
+        MyApplicationTheme(darkTheme = false) {
+          HomeScreen(
+            uiState = HomeUiState(
+              selectedTab = HomeTab.ENGINES,
+              updateState = com.example.documentviewer.update.AppUpdateState.Downloading(
+                release = release,
+                downloadedBytes = 10L * 1024L * 1024L,
+                totalBytes = 20L * 1024L * 1024L
+              )
+            ),
+            isArabic = isArabic,
+            onPickDocument = {},
+            onOpenDocument = {},
+            onToggleFavorite = {},
+            onRemoveRecent = {},
+            onSelectTab = {},
+            onSelectCategory = {},
+            onSearchQueryChange = {},
+            onThemeModeChange = {},
+            onLanguageChange = {},
+            onContinuousPdfChange = {},
+            onKeepScreenOnChange = {},
+            onClearHistory = {},
+            onErrorConsumed = {},
+            onCheckForUpdates = { checkClicked = true },
+            onCancelUpdate = { cancelClicked = true }
+          )
+        }
+      }
+    }
+
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithTag("app_update_card").assertIsDisplayed()
+    composeTestRule.onNodeWithTag("update_mb_progress_text").assertIsDisplayed()
+    composeTestRule.onNodeWithTag("cancel_update_button").assertIsDisplayed().performClick()
+    composeTestRule.waitForIdle()
+    assertTrue(cancelClicked)
+    assertEquals(false, checkClicked)
+    assertEquals(0, composeTestRule.onAllNodesWithText("GitHub", substring = true, ignoreCase = true).fetchSemanticsNodes().size)
+    assertEquals(0, composeTestRule.onAllNodesWithText("GITHUP", substring = true, ignoreCase = true).fetchSemanticsNodes().size)
+  }
+
   private fun fakeRequest(url: String): WebResourceRequest = object : WebResourceRequest {
     override fun getUrl(): Uri = Uri.parse(url)
     override fun isForMainFrame(): Boolean = false

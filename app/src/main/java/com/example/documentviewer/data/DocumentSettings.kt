@@ -18,7 +18,8 @@ data class ReaderSettingsState(
   val appLanguage: AppLanguage = AppLanguage.SYSTEM,
   val defaultNightReader: Boolean = false,
   val continuousPdfScroll: Boolean = true,
-  val keepScreenOn: Boolean = true
+  val keepScreenOn: Boolean = true,
+  val autoCheckUpdates: Boolean = true
 )
 
 class DocumentSettings(private val context: Context) {
@@ -29,6 +30,7 @@ class DocumentSettings(private val context: Context) {
     val NIGHT_READER = booleanPreferencesKey("night_reader")
     val CONTINUOUS_PDF = booleanPreferencesKey("continuous_pdf")
     val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
+    val AUTO_CHECK_UPDATES = booleanPreferencesKey("auto_check_updates")
   }
 
   val settingsFlow: Flow<ReaderSettingsState> = context.docuSettingsStore.data.map { prefs ->
@@ -41,7 +43,8 @@ class DocumentSettings(private val context: Context) {
       }.getOrDefault(AppLanguage.SYSTEM),
       defaultNightReader = prefs[Keys.NIGHT_READER] ?: false,
       continuousPdfScroll = prefs[Keys.CONTINUOUS_PDF] ?: true,
-      keepScreenOn = prefs[Keys.KEEP_SCREEN_ON] ?: true
+      keepScreenOn = prefs[Keys.KEEP_SCREEN_ON] ?: true,
+      autoCheckUpdates = prefs[Keys.AUTO_CHECK_UPDATES] ?: true
     )
   }
 
@@ -63,5 +66,9 @@ class DocumentSettings(private val context: Context) {
 
   suspend fun setKeepScreenOn(enabled: Boolean) {
     context.docuSettingsStore.edit { it[Keys.KEEP_SCREEN_ON] = enabled }
+  }
+
+  suspend fun setAutoCheckUpdates(enabled: Boolean) {
+    context.docuSettingsStore.edit { it[Keys.AUTO_CHECK_UPDATES] = enabled }
   }
 }

@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -17,10 +18,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.documentviewer.DocumentViewerActivity
 import com.example.documentviewer.data.SystemFolderItem
@@ -30,6 +33,8 @@ import com.example.documentviewer.ui.HomeScreen
 import com.example.documentviewer.ui.HomeTab
 import com.example.documentviewer.ui.HomeViewModel
 import com.example.documentviewer.ui.LocalizedAppContainer
+import com.example.documentviewer.ui.UpdateActionEvent
+import com.example.documentviewer.update.AppUpdateManager
 import com.example.ui.theme.MyApplicationTheme
 
 private class PersistableOpenDocumentContract : ActivityResultContracts.OpenDocument() {
@@ -43,6 +48,8 @@ private class PersistableOpenDocumentContract : ActivityResultContracts.OpenDocu
 class MainActivity : ComponentActivity() {
   private val homeViewModel: HomeViewModel by viewModels()
   private var autoPromptedStoragePermission = false
+  private var autoPromptedNotificationPermission = false
+  private val updateManager by lazy { AppUpdateManager(this) }
 
   private fun safeStartActivity(
     intent: Intent,
@@ -79,6 +86,38 @@ class MainActivity : ComponentActivity() {
     setContent {
       val uiState by homeViewModel.uiState.collectAsStateWithLifecycle()
       var targetFolderForImport by remember { mutableStateOf<SystemFolderItem?>(null) }
+
+      val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+      ) { /* Notification permission result does not block in-app update banner */ }
+
+      LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !autoPromptedNotificationPermission) {
+          val granted = ContextCompat.checkSelfPermission(
+            this@MainActivity,
+            Manifest.permission.POST_NOTIFICATIONS
+          ) == PackageManager.PERMISSION_GRANTED
+          if (!granted) {
+            autoPromptedNotificationPermission = true
+            runCatching {
+              notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+          }
+        }
+      }
+
+      LaunchedEffect(homeViewModel) {
+        homeViewModel.updateActionEvents.collect { event ->
+          when (event) {
+            is UpdateActionEvent.LaunchApkInstaller -> {
+              safeStartActivity(updateManager.buildInstallApkIntent(event.apkFile))
+            }
+            UpdateActionEvent.RequestInstallPermission -> {
+              safeStartActivity(updateManager.buildUnknownSourcesIntent())
+            }
+          }
+        }
+      }
 
       val storagePermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -251,7 +290,13 @@ class MainActivity : ComponentActivity() {
                   Toast.LENGTH_SHORT
                 ).show()
               }
-            }
+            },
+            onCheckForUpdates = { homeViewModel.checkForUpdates(manual = true) },
+            onCancelUpdate = homeViewModel::cancelAppUpdate,
+            onRetryUpdateDownload = homeViewModel::startOrRetryUpdateDownload,
+            onInstallUpdate = homeViewModel::installDownloadedUpdate,
+            onDismissUpdate = homeViewModel::dismissUpdateState,
+            onAutoCheckUpdatesChange = homeViewModel::setAutoCheckUpdates
           )
         }
       }
@@ -262,5 +307,6 @@ class MainActivity : ComponentActivity() {
     super.onResume()
     // Automatically scan for any newly created folders or downloaded documents on resume
     homeViewModel.refreshSystemFolders()
+    homeViewModel.refreshInstallPermissionState()
   }
 }

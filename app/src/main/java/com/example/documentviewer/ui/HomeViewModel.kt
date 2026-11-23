@@ -1,11 +1,18 @@
 package com.example.documentviewer.ui
 
 import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.database.ContentObserver
 import android.net.Uri
 import android.os.FileObserver
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.BuildConfig
+import com.example.R
 import com.example.documentviewer.data.AppLanguage
 import com.example.documentviewer.data.DocumentRepository
 import com.example.documentviewer.data.DocumentSettings
@@ -16,13 +23,19 @@ import com.example.documentviewer.data.SystemScanResult
 import com.example.documentviewer.data.ThemeMode
 import com.example.documentviewer.model.DocumentCategory
 import com.example.documentviewer.model.DocumentDescriptor
+import com.example.documentviewer.update.AppUpdateManager
+import com.example.documentviewer.update.AppUpdateState
+import com.example.documentviewer.update.ReleaseInfo
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
@@ -31,6 +44,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.io.File
 
 enum class HomeTab { RECENT, FOLDERS, FAVORITES, ENGINES }
 
@@ -39,6 +53,11 @@ enum class SortOrder {
   OLDEST_OPENED,
   NAME_ASC,
   SIZE_DESC
+}
+
+sealed interface UpdateActionEvent {
+  data class LaunchApkInstaller(val apkFile: File) : UpdateActionEvent
+  data object RequestInstallPermission : UpdateActionEvent
 }
 
 data class HomeUiState(
@@ -63,7 +82,8 @@ data class HomeUiState(
   val codeCount: Int = 0,
   val settings: ReaderSettingsState = ReaderSettingsState(),
   val isOpeningDocument: Boolean = false,
-  val errorMessage: String? = null
+  val errorMessage: String? = null,
+  val updateState: AppUpdateState = AppUpdateState.Idle
 )
 
 @OptIn(FlowPreview::class)
@@ -71,6 +91,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
   private val repository = DocumentRepository(application)
   private val settingsStore = DocumentSettings(application)
   private val foldersManager = SystemFoldersManager(application)
+  private val updateManager = AppUpdateManager(application)
 
   private val selectedTab = MutableStateFlow(HomeTab.RECENT)
   private val selectedCategory = MutableStateFlow<DocumentCategory?>(null)
@@ -81,13 +102,36 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
   private val scanResultFlow = MutableStateFlow(SystemScanResult(emptyList(), emptyList(), true))
   private val isOpening = MutableStateFlow(false)
   private val errorMessage = MutableStateFlow<String?>(null)
+  private val updateStateFlow = MutableStateFlow<AppUpdateState>(AppUpdateState.Idle)
+
+  private val _updateActionEvents = MutableSharedFlow<UpdateActionEvent>(extraBufferCapacity = 4)
+  val updateActionEvents: SharedFlow<UpdateActionEvent> = _updateActionEvents.asSharedFlow()
 
   private var mediaObserver: ContentObserver? = null
   private var fileObservers: List<FileObserver> = emptyList()
   private val scanMutex = Mutex()
   private val scanTriggerFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+  private var updateJob: Job? = null
+  private var pendingInstallAfterPermission = false
+
+  private val cancelUpdateReceiver = object : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
+      if (intent?.action == AppUpdateManager.ACTION_CANCEL_APP_UPDATE) {
+        cancelAppUpdate()
+      }
+    }
+  }
 
   init {
+    runCatching {
+      ContextCompat.registerReceiver(
+        application,
+        cancelUpdateReceiver,
+        IntentFilter(AppUpdateManager.ACTION_CANCEL_APP_UPDATE),
+        ContextCompat.RECEIVER_NOT_EXPORTED
+      )
+    }
+
     viewModelScope.launch {
       val cached = withContext(Dispatchers.IO) { foldersManager.loadCachedScanSnapshot() }
       if (cached != null && scanResultFlow.value.folders.isEmpty() && cached.folders.isNotEmpty()) {
@@ -98,6 +142,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         repository.seedSampleWorkspace()
       }
       performSafeScan(forceShowLoading = false)
+
+      val settings = settingsStore.settingsFlow.first()
+      if (settings.autoCheckUpdates) {
+        checkForUpdates(manual = false)
+      }
     }
 
     viewModelScope.launch {
@@ -120,6 +169,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     libQ to foldQ
   }
 
+  private val settingsAndUpdateFlow = combine(settingsStore.settingsFlow, updateStateFlow) { s, u ->
+    s to u
+  }
+
   val uiState: StateFlow<HomeUiState> = combine(
     selectedTab,
     selectedCategory,
@@ -127,7 +180,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     searchQueriesFlow,
     repository.recentDocuments,
     repository.favoriteDocuments,
-    settingsStore.settingsFlow,
+    settingsAndUpdateFlow,
     isOpening,
     errorMessage,
     scanResultFlow,
@@ -144,7 +197,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     val recents = values[4] as List<DocumentDescriptor>
     @Suppress("UNCHECKED_CAST")
     val favs = values[5] as List<DocumentDescriptor>
-    val settings = values[6] as ReaderSettingsState
+    @Suppress("UNCHECKED_CAST")
+    val settingsAndUpdate = values[6] as Pair<ReaderSettingsState, AppUpdateState>
+    val settings = settingsAndUpdate.first
+    val updateState = settingsAndUpdate.second
     val opening = values[7] as Boolean
     val error = values[8] as String?
     val scanRes = values[9] as SystemScanResult
@@ -174,7 +230,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
       codeCount = mergedAllDocs.count { it.format.category == DocumentCategory.CODE },
       settings = settings,
       isOpeningDocument = opening,
-      errorMessage = error
+      errorMessage = error,
+      updateState = updateState
     )
   }.stateIn(
     scope = viewModelScope,
@@ -200,6 +257,156 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
       SortOrder.OLDEST_OPENED -> filtered.sortedBy { it.lastOpenedAt }
       SortOrder.NAME_ASC -> filtered.sortedBy { it.displayName.lowercase() }
       SortOrder.SIZE_DESC -> filtered.sortedByDescending { it.sizeBytes }
+    }
+  }
+
+  fun checkForUpdates(manual: Boolean = true) {
+    val activeState = updateStateFlow.value
+    if (activeState is AppUpdateState.Checking || activeState is AppUpdateState.Downloading) {
+      return
+    }
+    updateJob?.cancel()
+    updateJob = viewModelScope.launch {
+      if (manual) {
+        updateStateFlow.value = AppUpdateState.Checking
+      }
+      val result = updateManager.fetchLatestRelease()
+      result.onSuccess { release ->
+        if (release == null) {
+          if (manual) {
+            updateStateFlow.value = AppUpdateState.Error(
+              getApplication<Application>().getString(R.string.update_no_apk_found)
+            )
+          }
+          return@launch
+        }
+        val isNewer = AppUpdateManager.compareVersions(
+          remoteTag = release.versionName,
+          currentVersion = BuildConfig.VERSION_NAME
+        ) > 0
+        if (isNewer) {
+          updateStateFlow.value = AppUpdateState.UpdateAvailable(release)
+          updateManager.showUpdateAvailableNotification(release)
+          executeUpdateDownload(release)
+        } else if (manual) {
+          updateStateFlow.value = AppUpdateState.UpToDate(System.currentTimeMillis())
+        }
+      }.onFailure { err ->
+        if (manual) {
+          val msg = err.message?.takeIf { it.isNotBlank() && !it.contains("github", ignoreCase = true) }
+            ?: getApplication<Application>().getString(R.string.update_error_network)
+          updateStateFlow.value = AppUpdateState.Error(msg)
+        }
+      }
+    }
+  }
+
+  fun startOrRetryUpdateDownload(release: ReleaseInfo) {
+    if (updateStateFlow.value is AppUpdateState.Downloading) return
+    updateJob?.cancel()
+    updateJob = viewModelScope.launch {
+      updateManager.showUpdateAvailableNotification(release)
+      executeUpdateDownload(release)
+    }
+  }
+
+  private suspend fun executeUpdateDownload(release: ReleaseInfo) {
+    updateStateFlow.value = AppUpdateState.Downloading(
+      release = release,
+      downloadedBytes = 0L,
+      totalBytes = release.sizeBytes
+    )
+    val downloadResult = updateManager.downloadApk(release) { downloaded, total ->
+      updateStateFlow.value = AppUpdateState.Downloading(
+        release = release,
+        downloadedBytes = downloaded,
+        totalBytes = total
+      )
+      updateManager.showDownloadProgressNotification(release, downloaded, total)
+    }
+
+    downloadResult.onSuccess { apkFile ->
+      val canInstall = updateManager.canInstallPackages()
+      updateStateFlow.value = AppUpdateState.ReadyToInstall(
+        release = release,
+        apkFilePath = apkFile.absolutePath,
+        needsInstallPermission = !canInstall
+      )
+      updateManager.showReadyToInstallNotification(release, apkFile)
+      if (canInstall) {
+        _updateActionEvents.tryEmit(UpdateActionEvent.LaunchApkInstaller(apkFile))
+      }
+    }.onFailure { err ->
+      if (err is CancellationException) throw err
+      updateManager.cancelUpdateNotification()
+      val msg = err.message?.takeIf { it.isNotBlank() && !it.contains("github", ignoreCase = true) }
+        ?: getApplication<Application>().getString(R.string.update_error_download)
+      updateStateFlow.value = AppUpdateState.Error(message = msg, release = release)
+    }
+  }
+
+  fun cancelAppUpdate() {
+    val activeRelease = when (val st = updateStateFlow.value) {
+      is AppUpdateState.Downloading -> st.release
+      is AppUpdateState.UpdateAvailable -> st.release
+      else -> null
+    }
+    updateJob?.cancel()
+    updateJob = null
+    pendingInstallAfterPermission = false
+    updateManager.cleanupPartialDownload()
+    updateManager.cancelUpdateNotification()
+    updateStateFlow.value = if (activeRelease != null) {
+      AppUpdateState.Cancelled(activeRelease)
+    } else {
+      AppUpdateState.Idle
+    }
+  }
+
+  fun installDownloadedUpdate() {
+    val ready = updateStateFlow.value as? AppUpdateState.ReadyToInstall ?: return
+    val apkFile = File(ready.apkFilePath)
+    if (!apkFile.exists() || apkFile.length() <= 0L) {
+      startOrRetryUpdateDownload(ready.release)
+      return
+    }
+    if (updateManager.canInstallPackages()) {
+      pendingInstallAfterPermission = false
+      updateStateFlow.value = ready.copy(needsInstallPermission = false)
+      _updateActionEvents.tryEmit(UpdateActionEvent.LaunchApkInstaller(apkFile))
+    } else {
+      pendingInstallAfterPermission = true
+      updateStateFlow.value = ready.copy(needsInstallPermission = true)
+      _updateActionEvents.tryEmit(UpdateActionEvent.RequestInstallPermission)
+    }
+  }
+
+  fun refreshInstallPermissionState() {
+    val ready = updateStateFlow.value as? AppUpdateState.ReadyToInstall ?: return
+    val canInstall = updateManager.canInstallPackages()
+    if (ready.needsInstallPermission == canInstall) {
+      updateStateFlow.value = ready.copy(needsInstallPermission = !canInstall)
+    }
+    if (canInstall && pendingInstallAfterPermission) {
+      pendingInstallAfterPermission = false
+      val apkFile = File(ready.apkFilePath)
+      if (apkFile.exists() && apkFile.length() > 0L) {
+        _updateActionEvents.tryEmit(UpdateActionEvent.LaunchApkInstaller(apkFile))
+      }
+    }
+  }
+
+  fun dismissUpdateState() {
+    pendingInstallAfterPermission = false
+    updateManager.cancelUpdateNotification()
+    if (updateStateFlow.value !is AppUpdateState.Downloading && updateStateFlow.value !is AppUpdateState.Checking) {
+      updateStateFlow.value = AppUpdateState.Idle
+    }
+  }
+
+  fun setAutoCheckUpdates(enabled: Boolean) {
+    viewModelScope.launch {
+      settingsStore.setAutoCheckUpdates(enabled)
     }
   }
 
@@ -377,7 +584,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         onReady(descriptor)
       }.onFailure { err ->
         errorMessage.value = err.message
-          ?: getApplication<Application>().getString(com.example.R.string.file_unavailable_reselect)
+          ?: getApplication<Application>().getString(R.string.file_unavailable_reselect)
       }
     }
   }
@@ -394,7 +601,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         onReady(validDescriptor)
       }.onFailure {
         onUnavailable(
-          getApplication<Application>().getString(com.example.R.string.file_unavailable_reselect)
+          getApplication<Application>().getString(R.string.file_unavailable_reselect)
         )
       }
     }
@@ -406,6 +613,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
   override fun onCleared() {
     super.onCleared()
+    updateJob?.cancel()
+    runCatching { getApplication<Application>().unregisterReceiver(cancelUpdateReceiver) }
     foldersManager.unregisterMediaStoreObserver(mediaObserver)
     foldersManager.unregisterDirectoryFileObservers(fileObservers)
   }
