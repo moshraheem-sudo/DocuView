@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://appassets.androidplatform.net; script-src 'self' https://appassets.androidplatform.net; style-src 'self' https://appassets.androidplatform.net 'unsafe-inline'; img-src 'self' https://appassets.androidplatform.net data: blob:; font-src 'self' https://appassets.androidplatform.net data:; connect-src 'self' https://appassets.androidplatform.net blob: data:; object-src 'none'; frame-src 'none';" />
+  <title>Access Database Viewer</title>
+  <link rel="stylesheet" href="./access_host.css" />
+</head>
+<body>
+  <div id="access-shell">
+    <div id="db-object-tabs" role="tablist" aria-label="Database Objects"></div>
+    <div id="db-meta-bar">
+      <span id="db-format-badge">ACCESS</span>
+      <span id="db-summary-text"></span>
+      <button id="toggle-schema-btn" type="button">Schema</button>
+    </div>
+    <div id="schema-drawer" class="hidden"></div>
+    <div id="cell-inspector-bar">
+      <span id="inspector-col-name">Field</span>
+      <span id="inspector-cell-val">—</span>
+      <button id="copy-cell-btn" type="button">Copy</button>
+    </div>
+    <div id="db-viewport">
+      <div id="db-scale-host">
+        <div id="db-content-container"></div>
+      </div>
+    </div>
+  </div>
+  <script src="./access_host.js"></script>
+</body>
+</html>

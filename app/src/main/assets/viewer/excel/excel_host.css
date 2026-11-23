@@ -1,0 +1,321 @@
+:root {
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-alt: #f1f5f9;
+  --header-bg: #e2e8f0;
+  --text: #0f172a;
+  --text-muted: #475569;
+  --border: #cbd5e1;
+  --accent: #15803d;
+  --accent-soft: rgba(21, 128, 61, 0.14);
+  --selected-border: #15803d;
+  --match-bg: #fde047;
+  --match-active: #fb923c;
+}
+
+body.night-mode {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface-alt: #162032;
+  --header-bg: #263349;
+  --text: #e2e8f0;
+  --text-muted: #94a3b8;
+  --border: #334155;
+  --accent: #4ade80;
+  --accent-soft: rgba(74, 222, 128, 0.18);
+  --selected-border: #4ade80;
+  --match-bg: #ca8a04;
+  --match-active: #ea580c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Arabic", sans-serif;
+  overflow: hidden;
+  touch-action: pan-x pan-y pinch-zoom;
+}
+
+#excel-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  touch-action: pan-x pan-y pinch-zoom;
+}
+
+#sheet-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.sheet-tab-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sheet-tab-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.sheet-tab-meta {
+  font-size: 11px;
+  opacity: 0.75;
+  font-weight: 500;
+}
+
+#formula-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  background: var(--surface-alt);
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+  flex-shrink: 0;
+}
+
+#cell-ref-badge {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  min-width: 44px;
+  text-align: center;
+}
+
+#cell-value-preview {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+#copy-cell-btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#sheet-viewport {
+  flex: 1;
+  overflow: auto;
+  padding: 8px;
+  touch-action: pan-x pan-y pinch-zoom;
+  -webkit-overflow-scrolling: touch;
+}
+
+#sheet-scale-host {
+  transform-origin: top left;
+  display: inline-block;
+  min-width: 100%;
+}
+
+body.dir-rtl #sheet-scale-host {
+  transform-origin: top right;
+}
+
+body.dir-rtl #sheet-viewport,
+body.dir-rtl #sheet-table-container {
+  direction: rtl;
+}
+
+body.dir-ltr #sheet-viewport,
+body.dir-ltr #sheet-table-container {
+  direction: ltr;
+}
+
+table.xlsx-grid {
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+table.xlsx-grid th,
+table.xlsx-grid td {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 10px;
+  vertical-align: middle;
+  max-width: 320px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+table.xlsx-grid td {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
+
+table.xlsx-grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--header-bg);
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 11.5px;
+  text-align: center;
+  user-select: none;
+}
+
+table.xlsx-grid th.corner-cell {
+  left: 0;
+  z-index: 5;
+  min-width: 42px;
+}
+
+body.dir-rtl table.xlsx-grid th.corner-cell {
+  left: auto;
+  right: 0;
+}
+
+table.xlsx-grid th.row-num {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--header-bg);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 11.5px;
+  text-align: center;
+  min-width: 42px;
+  user-select: none;
+}
+
+body.dir-rtl table.xlsx-grid th.row-num {
+  left: auto;
+  right: 0;
+}
+
+table.xlsx-grid tbody tr:nth-child(even) td {
+  background: var(--surface-alt);
+}
+
+table.xlsx-grid tbody tr:first-child td.header-like {
+  font-weight: 700;
+}
+
+table.xlsx-grid td.num-cell {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+table.xlsx-grid td.formula-cell {
+  border-top-color: var(--border);
+}
+
+table.xlsx-grid td.selected-cell {
+  outline: 2px solid var(--selected-border);
+  outline-offset: -2px;
+  background: var(--accent-soft) !important;
+}
+
+mark.docu-match {
+  background: var(--match-bg);
+  color: #000000;
+  padding: 0 2px;
+  border-radius: 3px;
+}
+
+mark.docu-match.active {
+  background: var(--match-active);
+  color: #ffffff;
+}
+
+#sheet-more-bar {
+  padding: 10px 4px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#sheet-more-bar.hidden {
+  display: none;
+}
+
+.load-more-btn {
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.empty-sheet-card {
+  padding: 28px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  color: var(--text-muted);
+}
+
+#docu-copy-pill {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(15, 23, 42, 0.92);
+  color: #ffffff;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.24);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 99;
+}
+
+#docu-copy-pill.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}

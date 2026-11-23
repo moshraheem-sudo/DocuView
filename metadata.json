@@ -1,0 +1,8 @@
+{
+  "name": "Remix DocuView",
+  "description": "Offline Universal Document Viewer for Android supporting PDF, Word (DOCX/DOC), and PowerPoint (PPTX/PPSX/PPT) with search, thumbnails, RTL Arabic support, and sandboxed local rendering.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://appassets.androidplatform.net; script-src 'self' https://appassets.androidplatform.net; style-src 'self' https://appassets.androidplatform.net 'unsafe-inline'; img-src 'self' https://appassets.androidplatform.net data: blob:; font-src 'self' https://appassets.androidplatform.net data:; connect-src 'self' https://appassets.androidplatform.net blob: data:; worker-src 'self' https://appassets.androidplatform.net blob:; object-src 'none'; frame-src 'none';" />
+  <title>PDF Viewer</title>
+  <link rel="stylesheet" href="./pdf_viewer.css" />
+  <link rel="stylesheet" href="./pdf_host.css" />
+</head>
+<body>
+  <div id="viewer-root">
+    <div id="pages-container"></div>
+  </div>
+  <script src="./pdf.min.js"></script>
+  <script src="./pdf_host.js"></script>
+</body>
+</html>

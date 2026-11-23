@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <files-path name="internal_files" path="." />
+    <files-path name="imported_docs" path="imported_docs/" />
+    <files-path name="user_folders" path="user_folders/" />
+    <cache-path name="cache_files" path="." />
+    <cache-path name="viewer_cache" path="viewer_cache/" />
+    <external-path name="external_files" path="." />
+</paths>

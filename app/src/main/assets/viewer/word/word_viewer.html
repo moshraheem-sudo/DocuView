@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://appassets.androidplatform.net; script-src 'self' https://appassets.androidplatform.net; style-src 'self' https://appassets.androidplatform.net 'unsafe-inline'; img-src 'self' https://appassets.androidplatform.net data: blob:; font-src 'self' https://appassets.androidplatform.net data:; connect-src 'self' https://appassets.androidplatform.net blob: data:; object-src 'none'; frame-src 'none';" />
+  <title>Word Viewer</title>
+  <link rel="stylesheet" href="./word_host.css" />
+</head>
+<body>
+  <button id="word-comments-pill" type="button" aria-label="Review Comments"></button>
+  <div id="word-viewport">
+    <div id="word-scale-host">
+      <div id="word-container"></div>
+    </div>
+    <section id="word-comments-section" aria-label="Review Comments"></section>
+  </div>
+  <script src="./jszip.min.js"></script>
+  <script src="./docx-preview.min.js"></script>
+  <script src="./word_host.js"></script>
+</body>
+</html>

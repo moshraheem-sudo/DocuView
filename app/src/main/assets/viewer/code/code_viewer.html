@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://appassets.androidplatform.net blob: data:; script-src 'self' 'unsafe-inline' https://appassets.androidplatform.net; style-src 'self' 'unsafe-inline' https://appassets.androidplatform.net; img-src 'self' data: blob: https://appassets.androidplatform.net; connect-src 'self' https://appassets.androidplatform.net;" />
+  <title>DocuView HTML &amp; Code Viewer</title>
+  <link rel="stylesheet" href="code_host.css" />
+</head>
+<body>
+  <div id="code-top-bar" class="code-top-bar">
+    <div class="code-meta-group">
+      <span id="lang-badge" class="lang-badge">CODE</span>
+      <span id="stats-label" class="stats-label">0 lines</span>
+    </div>
+    <div class="code-actions-group">
+      <div id="html-mode-tabs" class="html-mode-tabs" style="display: none;">
+        <button id="btn-mode-preview" class="mode-tab active" type="button">معاينة • Preview</button>
+        <button id="btn-mode-source" class="mode-tab" type="button">الكود • Source</button>
+      </div>
+      <button id="btn-wrap-toggle" class="wrap-btn active" type="button">Wrap</button>
+    </div>
+  </div>
+
+  <main id="viewer-container" class="viewer-container">
+    <div id="html-preview-pane" class="html-preview-pane" style="display: none;"></div>
+    <div id="code-editor-pane" class="code-editor-pane wrap-enabled">
+      <table id="code-table" class="code-table" cellspacing="0" cellpadding="0">
+        <tbody id="code-tbody"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script src="code_host.js"></script>
+</body>
+</html>

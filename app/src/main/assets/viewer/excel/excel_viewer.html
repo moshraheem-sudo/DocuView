@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://appassets.androidplatform.net; script-src 'self' https://appassets.androidplatform.net; style-src 'self' https://appassets.androidplatform.net 'unsafe-inline'; img-src 'self' https://appassets.androidplatform.net data: blob:; font-src 'self' https://appassets.androidplatform.net data:; connect-src 'self' https://appassets.androidplatform.net blob: data:; object-src 'none'; frame-src 'none';" />
+  <title>Excel Viewer</title>
+  <link rel="stylesheet" href="./excel_host.css" />
+</head>
+<body>
+  <div id="excel-shell">
+    <div id="sheet-tabs" role="tablist" aria-label="Worksheets"></div>
+    <div id="formula-bar">
+      <span id="cell-ref-badge">A1</span>
+      <span id="cell-value-preview"></span>
+      <button id="copy-cell-btn" type="button" title="Copy cell">Copy</button>
+    </div>
+    <div id="sheet-viewport">
+      <div id="sheet-scale-host">
+        <div id="sheet-table-container"></div>
+        <div id="sheet-more-bar" class="hidden"></div>
+      </div>
+    </div>
+  </div>
+  <script src="./xlsx.full.min.js"></script>
+  <script src="./excel_host.js"></script>
+</body>
+</html>
