@@ -207,6 +207,7 @@ html, body {
 #db-scale-host {
   transform-origin: top left;
   display: inline-block;
+  width: max-content;
   min-width: 100%;
 }
 
@@ -225,7 +226,8 @@ body.dir-ltr #db-content-container {
 }
 
 table.db-grid {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   background: var(--surface);
@@ -236,13 +238,15 @@ table.db-grid {
 
 table.db-grid th,
 table.db-grid td {
-  border-right: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  padding: 7px 10px;
+  padding: 7px 11px;
   vertical-align: middle;
-  max-width: 320px;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  min-width: 84px;
+  max-width: 340px;
+  white-space: pre-wrap;
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 
 table.db-grid td {

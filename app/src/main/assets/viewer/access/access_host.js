@@ -44,8 +44,10 @@
   }
 
   function applyScale() {
-    scaleHostEl.style.transform = `scale(${state.zoom})`;
-    scaleHostEl.style.width = `${Math.round(100 / state.zoom)}%`;
+    scaleHostEl.style.transform = "none";
+    scaleHostEl.style.zoom = String(state.zoom);
+    scaleHostEl.style.width = "max-content";
+    scaleHostEl.style.minWidth = "100%";
   }
 
   function setZoom(zoomFactor) {

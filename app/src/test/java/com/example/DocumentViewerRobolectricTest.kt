@@ -655,6 +655,26 @@ class DocumentViewerRobolectricTest {
     assertTrue(pdfJs.contains("visualViewport"))
   }
 
+  @Test
+  fun `excel and access viewers auto-fit columns horizontally without breaking words character-by-character`() {
+    val excelCss = context.assets.open("viewer/excel/excel_host.css").bufferedReader().use { it.readText() }
+    assertTrue(excelCss.contains("table-layout: fixed;"))
+    assertTrue(excelCss.contains("width: max-content;"))
+    assertTrue(excelCss.contains("word-break: normal;"))
+    assertTrue(!excelCss.contains("overflow-wrap: anywhere;"))
+    assertTrue(!excelCss.contains("word-break: break-word;"))
+
+    val excelJs = context.assets.open("viewer/excel/excel_host.js").bufferedReader().use { it.readText() }
+    assertTrue(excelJs.contains("computeAutoFitColumnWidths"))
+    assertTrue(excelJs.contains("colgroup"))
+    assertTrue(excelJs.contains("measureCellTextWidthPx"))
+
+    val accessCss = context.assets.open("viewer/access/access_host.css").bufferedReader().use { it.readText() }
+    assertTrue(accessCss.contains("width: max-content;"))
+    assertTrue(accessCss.contains("word-break: normal;"))
+    assertTrue(!accessCss.contains("overflow-wrap: anywhere;"))
+  }
+
   private fun fakeRequest(url: String): WebResourceRequest = object : WebResourceRequest {
     override fun getUrl(): Uri = Uri.parse(url)
     override fun isForMainFrame(): Boolean = false

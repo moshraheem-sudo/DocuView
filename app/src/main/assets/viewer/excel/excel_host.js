@@ -36,8 +36,10 @@
   }
 
   function applyScale() {
-    scaleHostEl.style.transform = `scale(${state.zoom})`;
-    scaleHostEl.style.width = `${Math.round(100 / state.zoom)}%`;
+    scaleHostEl.style.transform = "none";
+    scaleHostEl.style.zoom = String(state.zoom);
+    scaleHostEl.style.width = "max-content";
+    scaleHostEl.style.minWidth = "100%";
   }
 
   function setZoom(zoomFactor) {
@@ -65,9 +67,21 @@
   function isCurrentSheetRtl() {
     try {
       const wb = state.workbook;
-      if (!wb || !wb.Workbook || !Array.isArray(wb.Workbook.Views)) return false;
-      const view = wb.Workbook.Views[0];
-      return !!(view && view.RTL);
+      if (wb && wb.Workbook && Array.isArray(wb.Workbook.Views)) {
+        const view = wb.Workbook.Views[0];
+        if (view && typeof view.RTL === "boolean") {
+          return view.RTL;
+        }
+      }
+      const sheetName = state.sheetNames[state.activeSheetIdx];
+      const sheet = wb && wb.Sheets && wb.Sheets[sheetName];
+      if (sheet && Array.isArray(sheet["!views"]) && sheet["!views"][0] && sheet["!views"][0].rightToLeft) {
+        return true;
+      }
+      if (containerEl && /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(containerEl.textContent || "")) {
+        return true;
+      }
+      return false;
     } catch (_) {
       return false;
     }
@@ -75,6 +89,101 @@
 
   function colLabel(idx) {
     return XLSX.utils.encode_col(idx);
+  }
+
+  const measureCanvas = document.createElement("canvas");
+  const measureCtx = measureCanvas.getContext("2d");
+
+  function measureCellTextWidthPx(text, isHeader) {
+    if (!text) return 0;
+    if (measureCtx) {
+      measureCtx.font = (isHeader ? "700 " : "600 ") +
+        '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Arabic", sans-serif';
+    }
+    const lines = String(text).split(/\r?\n/);
+    let maxW = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line) continue;
+      const w = measureCtx ? measureCtx.measureText(line).width : line.length * 8.5;
+      if (w > maxW) maxW = w;
+    }
+    return maxW;
+  }
+
+  function computeAutoFitColumnWidths(sheet, startRow, renderRows, startCol, endCol, spanMap, skipSet) {
+    const MIN_COL_PX = 48;
+    const MAX_COL_PX = 340;
+    const CELL_H_PADDING_PX = 28;
+    const colCount = Math.max(0, endCol - startCol + 1);
+    const colWidths = new Array(colCount).fill(MIN_COL_PX);
+    const excelColsMeta = Array.isArray(sheet["!cols"]) ? sheet["!cols"] : [];
+
+    for (let c = startCol; c <= endCol; c++) {
+      const idx = c - startCol;
+      const headerWidth = Math.ceil(measureCellTextWidthPx(colLabel(c), true)) + 20;
+      let widthPx = Math.max(MIN_COL_PX, headerWidth);
+      const meta = excelColsMeta[c];
+      if (meta && !meta.hidden) {
+        let metaPx = 0;
+        if (typeof meta.wpx === "number" && meta.wpx > 0) {
+          metaPx = meta.wpx + 12;
+        } else if (typeof meta.wch === "number" && meta.wch > 0) {
+          metaPx = meta.wch * 8 + 18;
+        }
+        if (metaPx > widthPx) {
+          widthPx = Math.min(MAX_COL_PX, Math.ceil(metaPx));
+        }
+      }
+      colWidths[idx] = widthPx;
+    }
+
+    const mergedHorizontalCells = [];
+    for (let r = startRow; r <= renderRows; r++) {
+      const isTopRow = r === startRow;
+      for (let c = startCol; c <= endCol; c++) {
+        const key = `${r},${c}`;
+        if (skipSet.has(key)) continue;
+        const addr = XLSX.utils.encode_cell({ r, c });
+        const cell = sheet[addr];
+        if (!cell) continue;
+        const text = cell.w != null ? String(cell.w) : (cell.v != null ? String(cell.v) : "");
+        if (!text) continue;
+
+        const span = spanMap.get(key);
+        const colspan = span ? Math.min(span.colspan, endCol - c + 1) : 1;
+        const measuredW = Math.ceil(measureCellTextWidthPx(text, isTopRow || colspan > 1) * 1.06);
+        const neededPx = measuredW + CELL_H_PADDING_PX;
+
+        if (colspan > 1) {
+          mergedHorizontalCells.push({ startIdx: c - startCol, colspan, neededPx });
+        } else {
+          const idx = c - startCol;
+          const clamped = Math.min(MAX_COL_PX, Math.max(MIN_COL_PX, neededPx));
+          if (clamped > colWidths[idx]) {
+            colWidths[idx] = clamped;
+          }
+        }
+      }
+    }
+
+    // Ensure horizontally merged cells (e.g., category group titles) never get clipped if spanned columns are narrow
+    for (let i = 0; i < mergedHorizontalCells.length; i++) {
+      const m = mergedHorizontalCells[i];
+      let currentSum = 0;
+      for (let k = 0; k < m.colspan; k++) {
+        currentSum += colWidths[m.startIdx + k];
+      }
+      const targetSum = Math.min(MAX_COL_PX * m.colspan, m.neededPx);
+      if (targetSum > currentSum) {
+        const extraEach = Math.ceil((targetSum - currentSum) / m.colspan);
+        for (let k = 0; k < m.colspan; k++) {
+          colWidths[m.startIdx + k] = Math.min(MAX_COL_PX, colWidths[m.startIdx + k] + extraEach);
+        }
+      }
+    }
+
+    return colWidths;
   }
 
   function buildMergeLookup(sheet) {
@@ -149,8 +258,30 @@
     const endCol = Math.min(range.e.c, startCol + MAX_RENDER_COLS - 1);
 
     const { spanMap, skipSet } = buildMergeLookup(sheet);
+    const colWidths = computeAutoFitColumnWidths(sheet, startRow, renderRows, startCol, endCol, spanMap, skipSet);
+    const ROW_NUM_COL_PX = 44;
+    let totalTableWidthPx = ROW_NUM_COL_PX;
+    for (let i = 0; i < colWidths.length; i++) {
+      totalTableWidthPx += colWidths[i];
+    }
+
     const table = document.createElement("table");
     table.className = "xlsx-grid";
+    table.style.width = totalTableWidthPx + "px";
+    table.style.minWidth = "100%";
+
+    const colgroup = document.createElement("colgroup");
+    const rowNumCol = document.createElement("col");
+    rowNumCol.style.width = ROW_NUM_COL_PX + "px";
+    rowNumCol.style.minWidth = ROW_NUM_COL_PX + "px";
+    colgroup.appendChild(rowNumCol);
+    for (let i = 0; i < colWidths.length; i++) {
+      const colEl = document.createElement("col");
+      colEl.style.width = colWidths[i] + "px";
+      colEl.style.minWidth = colWidths[i] + "px";
+      colgroup.appendChild(colEl);
+    }
+    table.appendChild(colgroup);
 
     // Column headers (A, B, C...)
     const thead = document.createElement("thead");
@@ -186,7 +317,10 @@
         const span = spanMap.get(key);
         if (span) {
           if (span.rowspan > 1) td.rowSpan = span.rowspan;
-          if (span.colspan > 1) td.colSpan = span.colspan;
+          if (span.colspan > 1) {
+            td.colSpan = span.colspan;
+            td.classList.add("merged-cell");
+          }
         }
 
         const addr = XLSX.utils.encode_cell({ r, c });
